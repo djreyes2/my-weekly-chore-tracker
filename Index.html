@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#17231f"><title>My Chore Tracker</title>
+<style>
+:root{--bg:#f3f5f2;--ink:#18231f;--muted:#6c7771;--line:#e4e9e5;--green:#287653}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.app{max-width:760px;margin:auto;padding:26px 16px 48px}header,.top,.dayhead,.section{display:flex;justify-content:space-between;align-items:center;gap:12px}h1{font-size:32px;margin:5px 0}.eyebrow,.muted,.count,footer{color:var(--muted);font-size:13px}.card,.day{background:white;border:1px solid var(--line);border-radius:19px;padding:18px;margin:14px 0}.percent{font-size:29px;color:var(--green);font-weight:800}.bar{height:11px;background:#edf1ee;border-radius:20px;overflow:hidden;margin:12px 0}.fill{height:100%;background:var(--green);width:0}.section{margin:25px 2px 10px}h2{font-size:20px;margin:0}h3{font-size:16px;margin:0}.task{display:flex;align-items:center;gap:11px;padding:11px 2px;border-top:1px solid #f0f2f0}.task input{width:21px;height:21px;accent-color:var(--green);flex:none}.task span{font-size:14px;flex:1}.task.done span{text-decoration:line-through;color:#89938d}button{border:0;border-radius:11px;padding:11px 14px;font-weight:700;cursor:pointer}.primary{background:var(--green);color:white}.secondary{background:#edf2ee;color:var(--ink)}.del{background:transparent;color:#a33e35;padding:4px}.add{display:flex;gap:8px;margin-top:10px}.add input,.add select{min-width:0;flex:1;padding:12px;border:1px solid var(--line);border-radius:11px;background:white}footer{text-align:center;padding:20px}
+</style></head><body><main class="app">
+<header><div><div class="eyebrow">YOUR HOME • YOUR ROUTINE</div><h1>My Chore Tracker</h1><div class="muted" id="today"></div></div><strong style="font-size:28px">✓</strong></header>
+<section class="card"><div class="top"><b>This week's progress</b><span class="percent" id="pct">0%</span></div><div class="bar"><div class="fill" id="fill"></div></div><div class="muted" id="count">Loading…</div><p><button class="secondary" id="reset">Reset this week</button></p></section>
+<div class="section"><h2>Daily chores</h2><span class="muted">Every day</span></div><div id="daily"></div>
+<div class="section"><h2>Weekly chores</h2><span class="muted">By day</span></div><div id="weekly"></div>
+<section class="card"><h2>Add your own chore</h2><p class="muted">Add a task to any day.</p><div class="add"><input id="newTask" placeholder="Example: Clean windows"><button class="primary" id="add">Add</button></div><div class="add"><select id="which"><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option></select></div></section>
+<footer>Progress saves automatically in this browser on this device.</footer></main>
+<script>
+(function(){
+const days=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+const dailyBase=["Make your bed","Wipe kitchen counters after use","Tidy your room and put clothes away"];
+const weeklyBase={
+Monday:["Clean your room","Dust furniture and desk","Sweep your room","Skim the pool","Go to the gym"],
+Tuesday:["Clean bathroom sink and mirror","Clean toilet and shower","Sweep bathroom floor","Wipe kitchen counters"],
+Wednesday:["Take out trash","Skim the pool","Sweep pool area","Sweep common areas","Go to the gym"],
+Thursday:["Do laundry","Fold and put away clothes","Change bed sheets","Dust your room"],
+Friday:["Clean bathroom","Sweep floors","Mop floors","Clean kitchen counters","Skim the pool","Go to the gym"],
+Saturday:["Deep clean your room","Dust furniture","Sweep and mop","Clean kitchen counters","Sweep pool area","Organize closet"],
+Sunday:["Skim the pool","Check and fold remaining laundry","Tidy shared areas","Prepare clothes for the week"]
+};
+const KEY="myChoreTracker_v2";
+function fresh(){let weekly={};days.forEach(d=>weekly[d]=weeklyBase[d].map((text,i)=>({id:d+i,text,done:false})));return{daily:dailyBase.map((text,i)=>({id:"d"+i,text,done:{}})),weekly};}
+function valid(s){return s&&Array.isArray(s.daily)&&s.weekly&&days.every(d=>Array.isArray(s.weekly[d]));}
+let state;try{let old=JSON.parse(localStorage.getItem(KEY));state=valid(old)?old:fresh();}catch(e){state=fresh();}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
+function safe(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function row(t,key,done,del){return `<div class="task ${done?"done":""}"><input type="checkbox" data-key="${safe(key)}" ${done?"checked":""}><span>${safe(t.text)}</span>${del?`<button class="del" data-del="${safe(key)}">Delete</button>`:""}</div>`;}
+function render(){
+document.getElementById("today").textContent=new Date().toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"});
+let total=0,done=0,dh="";
+days.forEach(day=>{let rows=state.daily.map(t=>{total++;let yes=!!t.done[day];if(yes)done++;return row(t,"d|"+day+"|"+t.id,yes,!!t.custom)}).join("");dh+=`<section class="day"><div class="dayhead"><h3>${day}</h3><span class="count">Daily routine</span></div>${rows}</section>`;});
+document.getElementById("daily").innerHTML=dh;
+let wh="";days.forEach(day=>{let tasks=state.weekly[day],n=tasks.filter(t=>t.done).length;let rows=tasks.map(t=>{total++;if(t.done)done++;return row(t,"w|"+day+"|"+t.id,!!t.done,!!t.custom)}).join("");wh+=`<section class="day"><div class="dayhead"><h3>${day}</h3><span class="count">${n}/${tasks.length} completed</span></div>${rows}</section>`;});
+document.getElementById("weekly").innerHTML=wh;let p=total?Math.round(done/total*100):0;document.getElementById("pct").textContent=p+"%";document.getElementById("fill").style.width=p+"%";document.getElementById("count").textContent=done+" of "+total+" chores completed";
+}
+document.addEventListener("change",e=>{if(!e.target.matches("input[data-key]"))return;let [type,day,id]=e.target.dataset.key.split("|");if(type==="d"){let t=state.daily.find(x=>x.id===id);if(t)t.done[day]=e.target.checked;}else{let t=state.weekly[day].find(x=>x.id===id);if(t)t.done=e.target.checked;}save();render();});
+document.addEventListener("click",e=>{let k=e.target.dataset.del;if(!k)return;let [type,day,id]=k.split("|");if(type==="d")state.daily=state.daily.filter(t=>t.id!==id);else days.forEach(d=>state.weekly[d]=state.weekly[d].filter(t=>t.id!==id));save();render();});
+function add(){let input=document.getElementById("newTask"),text=input.value.trim(),day=document.getElementById("which").value;if(!text){input.focus();return;}state.weekly[day].push({id:"custom"+Date.now(),text,done:false,custom:true});input.value="";save();render();}
+document.getElementById("add").addEventListener("click",add);document.getElementById("newTask").addEventListener("keydown",e=>{if(e.key==="Enter")add();});
+document.getElementById("reset").addEventListener("click",()=>{if(confirm("Reset all checkmarks and custom chores?")){state=fresh();save();render();}});
+save();render();
+})();
+</script></body></html>
